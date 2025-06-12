@@ -6,10 +6,11 @@ use App\Models\Family;
 use App\Models\FamilyMember;
 use Illuminate\Http\Request;
 use Endroid\QrCode\Builder\Builder;
-use Endroid\QrCode\Encoding\Encoding;
-use Endroid\QrCode\ErrorCorrectionLevel;
-use Endroid\QrCode\RoundBlockSizeMode;
 use Endroid\QrCode\Writer\PngWriter;
+use Endroid\QrCode\Encoding\Encoding;
+use Endroid\QrCode\RoundBlockSizeMode;
+use Endroid\QrCode\ErrorCorrectionLevel;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class FamilyApiController extends Controller
 {
@@ -51,54 +52,53 @@ class FamilyApiController extends Controller
      */
     public function joinFamily(Request $request)
     {
-        $validatedData = $request->validate([
-            'qrCode' => 'required|string',
-            'userId' => 'required|string',
-        ]);
-        
-        // Validate if QR code contains a numeric family ID
-        if (!ctype_digit($validatedData['qrCode'])) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid family ID format'
-            ], 400);
-        }
+        try {
+            $validated = $request->validate([
+                'qrCode' => 'required|exists:families,id',
+                'userId' => 'required|exists:users,id'
+            ]);
 
-        $familyId = $validatedData['qrCode'];
-        
-        // Check if user is already in this family
-        $existingMember = FamilyMember::where('family_id', $familyId)
-            ->where('user_id', $validatedData['userId'])
-            ->first();
+            // Check if user is already a member
+            $existingMember = FamilyMember::where('family_id', $validated['qrCode'])
+                ->where('user_id', $validated['userId'])
+                ->first();
+
+            if ($existingMember) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User is already a member of this family'
+                ], 400);
+            }
+
+            // Create new family member
+            FamilyMember::create([
+                'family_id' => $validated['qrCode'],
+                'user_id' => $validated['userId'],
+                'is_head' => false // New members are not heads by default
+            ]);
+
+            // Return updated family info
+            $family = Family::with(['members.user'])->findOrFail($validated['qrCode']);
             
-        if ($existingMember) {
             return response()->json([
                 'success' => true,
-                'message' => 'You are already a member of this family',
-                'alreadyInFamily' => true,
-                'familyName' => $existingMember->family->name,
-                'qrCodeUrl' => $this->generateQRCode($familyId)->original['qrCode']
-            ], 200);
-        }
-        
-        // Create new family member
-        $family = Family::findOrFail($familyId);
-        
-        FamilyMember::create([
-            'family_id' => $familyId,
-            'user_id' => $validatedData['userId'],
-            'is_head' => false,
-        ]);
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Successfully joined family',
-            'familyName' => $family->name,
-            'familyId' => $familyId,
-            'qrCodeUrl' => $this->generateQRCode($familyId)->original['qrCode']
-        ]);
-    }
+                'familyName' => $family->name,
+                'members' => $family->members->map(function ($member) {
+                    return [
+                        'name' => $member->user->name,
+                        'type' => $member->is_head ? 'Head of Family' : 'Member'
+                    ];
+                })
+            ]);
 
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to join family'
+            ], 500);
+        }
+    }
+    
     public function index()
     {
         $families = Family::all()->map(function ($family) {
@@ -113,7 +113,36 @@ class FamilyApiController extends Controller
         return response()->json(['families' => $families]);
     }
 
-      public function generateQRCodeImage($familyId)
+    public function show($familyId)
+    {
+        try {
+            // Find the family
+            $family = Family::with(['members.user'])->findOrFail($familyId);
+            
+            // Format members data
+            $members = $family->members->map(function ($member) {
+                return [
+                    'name' => $member->user->name,
+                    'type' => $member->is_head ? 'Head of Family' : 'Member',
+                    // Add any other user info you need
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'familyName' => $family->name,
+                'description' => $family->description,
+                'members' => $members
+            ]);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Family not found'
+            ], 404);
+        }
+    }
+    public function generateQRCodeImage($familyId)
     {
         $family = Family::findOrFail($familyId);
         
