@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\GeocodeController;
 use App\Http\Controllers\FamilyApiController;
 use App\Http\Controllers\UserController;
 
@@ -18,3 +19,5 @@ Route::post('/users/temp', [UserController::class, 'createTempUser']);
 Route::post('/users/{userId}/complete', [UserController::class, 'completeRegistration']);
 Route::delete('/users/cleanup-pending', [UserController::class, 'cleanupPendingUsers']);
 
+Route::get('/reverse-geocode', [GeocodeController::class, 'reverseGeocode']);
+Route::get('/geocode', [GeocodeController::class, 'geocode']);
