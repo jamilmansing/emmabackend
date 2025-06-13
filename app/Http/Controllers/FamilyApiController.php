@@ -94,7 +94,7 @@ class FamilyApiController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to join family'
+                'message' => 'Failed to join family: ' . $e->getMessage()
             ], 500);
         }
     }
