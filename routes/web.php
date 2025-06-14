@@ -8,6 +8,8 @@ Route::get('/', function () {
 
 use App\Http\Controllers\FamilyController;
 use App\Http\Controllers\FamilyApiController;
+use App\Http\Controllers\EvacuationCenterController;
+use App\Http\Controllers\GeocodeController;
 
 Route::prefix('families')->group(function () {
     Route::get('/', [FamilyController::class, 'index'])->name('families.index');
@@ -19,4 +21,8 @@ Route::prefix('families')->group(function () {
     Route::delete('/{family}', [FamilyController::class, 'destroy'])->name('families.destroy');
     Route::get('/{family}/qr', [FamilyController::class, 'qr'])->name('families.qr');
 });
+
+Route::resource('evacuation-centers', EvacuationCenterController::class);
+Route::get('/geocode', [GeocodeController::class, 'geocode'])->name('geocode');
+Route::get('/reverse-geocode', [GeocodeController::class, 'reverseGeocode'])->name('reverseGeocode');
 

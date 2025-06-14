@@ -2,9 +2,10 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\GeocodeController;
 use App\Http\Controllers\FamilyApiController;
-use App\Http\Controllers\UserController;
+use App\Http\Controllers\EvacuationCenterController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -21,3 +22,4 @@ Route::delete('/users/cleanup-pending', [UserController::class, 'cleanupPendingU
 
 Route::get('/reverse-geocode', [GeocodeController::class, 'reverseGeocode']);
 Route::get('/geocode', [GeocodeController::class, 'geocode']);
+Route::get('/evacuation-centers/nearest', [EvacuationCenterController::class, 'nearest']);
